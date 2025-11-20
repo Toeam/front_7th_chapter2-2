@@ -1,8 +1,6 @@
-// import { addEvent } from "./eventManager";
+import { addEvent } from "./eventManager";
 
 export function createElement(vNode) {
-  console.log("craeteElement", vNode);
-
   // 1. vNode가 null, undefined, boolean 일 경우, 빈 텍스트 노드를 반환합니다.
   if (vNode === null || vNode === undefined || typeof vNode === "boolean") {
     return document.createTextNode("");
@@ -26,12 +24,8 @@ export function createElement(vNode) {
   else {
     const $el = document.createElement(vNode.type);
 
-    Object.entries(vNode.props || {})
-      .filter(([, value]) => value)
-      .forEach(([attr, value]) => {
-        const htmlAttr = attr === "className" ? "class" : attr;
-        $el.setAttribute(htmlAttr, value);
-      });
+    // 속성 설정
+    updateAttributes($el, vNode.props);
 
     vNode.children.forEach((child) => {
       $el.appendChild(createElement(child));
@@ -39,5 +33,39 @@ export function createElement(vNode) {
     return $el;
   }
 }
+function updateAttributes($el, props) {
+  if (!props) return;
 
-// function updateAttributes($el, props) {}
+  Object.entries(props)
+    .filter(([, value]) => value)
+    .forEach(([attr, value]) => {
+      // 이벤트 핸들러 처리
+      if (attr.startsWith("on")) {
+        const eventType = attr.slice(2).toLowerCase(); // "onClick" → "click"
+        addEvent($el, eventType, value);
+      }
+      // className 처리
+      else if (attr === "className") {
+        $el.className = value;
+        $el.setAttribute("class", value);
+      }
+      // boolean props 처리
+      else if (attr === "checked" || attr === "selected") {
+        $el[attr] = value;
+      } else if (attr === "disabled") {
+        $el.disabled = value;
+        if (value) {
+          $el.setAttribute("disabled", "");
+        }
+      } else if (attr === "readOnly") {
+        $el.readOnly = value;
+        if (value) {
+          $el.setAttribute("readonly", "");
+        }
+      }
+      // 일반 속성
+      else {
+        $el.setAttribute(attr, value);
+      }
+    });
+}
