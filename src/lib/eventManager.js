@@ -1,7 +1,26 @@
 const eventListeners = new Map();
+const rootEventHandlers = new Map(); // root에 등록된 이벤트 핸들러 추적
 
 // root요소에 이벤트 리스너를 등록
 export function setupEventListeners(root) {
+  // 기존 이벤트 리스너 제거
+  rootEventHandlers.forEach((handler, eventType) => {
+    root.removeEventListener(eventType, handler);
+  });
+  rootEventHandlers.clear();
+
+  // DOM에 존재하지 않는 요소의 이벤트 리스너 정리
+  const elementsToRemove = [];
+  eventListeners.forEach((listeners, element) => {
+    // 요소가 DOM에 존재하지 않거나 root의 하위 요소가 아니면 제거
+    if (!root.contains(element) && element !== root) {
+      elementsToRemove.push(element);
+    }
+  });
+  elementsToRemove.forEach((element) => {
+    eventListeners.delete(element);
+  });
+
   // eventType 가져오기, 중복된 이벤트 타입은 제거
   const eventTypes = new Set();
   eventListeners.forEach((listeners) => {
@@ -12,16 +31,19 @@ export function setupEventListeners(root) {
 
   // eventType 마다 이벤트 리스너 등록
   eventTypes.forEach((eventType) => {
-    root.addEventListener(eventType, (event) => {
+    const handler = (event) => {
       const $target = event.target;
       eventListeners.forEach((listeners, element) => {
-        if ($target === element) {
+        // 이벤트 위임: target이 element이거나 element의 하위 요소인지 확인
+        if (element.contains($target) || $target === element) {
           listeners
             .filter((listener) => listener.eventType === eventType)
             .forEach((listener) => listener.handler(event));
         }
       });
-    });
+    };
+    root.addEventListener(eventType, handler);
+    rootEventHandlers.set(eventType, handler); // 핸들러 저장
   });
 }
 
@@ -51,12 +73,10 @@ export function removeEvent(element, eventType, handler) {
   // 등록 이벤트 핸들러가 있는지 확인
   const listeners = eventListeners.get(element);
   if (listeners) {
-    console.log("removeEvent", listeners);
     const filteredListeners = listeners.filter(
-      ({ eventType: type, handler: fn }) => type != eventType && fn != handler,
+      ({ eventType: type, handler: fn }) =>
+        type !== eventType || fn !== handler,
     );
-
-    console.log("filteredListeners", filteredListeners);
 
     if (filteredListeners.length === 0) {
       eventListeners.delete(element);

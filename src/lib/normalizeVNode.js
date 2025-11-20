@@ -29,7 +29,10 @@ export function normalizeVNode(vNode) {
 
   const normalizedChildren = (vNode.children || [])
     .map((child) => normalizeVNode(child))
-    .filter((child) => child != null && child !== false && child !== true);
+    .filter(
+      (child) =>
+        child != null && child !== false && child !== true && child !== "",
+    );
 
   return {
     type: vNode.type,
